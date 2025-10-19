@@ -16,6 +16,34 @@ class _SignupScreenState extends State<SignupScreen> {
   bool obscureText = true;
   DbHelper dbHelper = DbHelper();
 
+  bool isPasswordValid(String password) {
+    if (password.length < 8) return false;
+    if (!RegExp(r'[a-z]').hasMatch(password)) return false;
+    if (password.contains(' ')) return false;
+    return true;
+  }
+
+  bool isEmailValid(String email) {
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,41 +162,71 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     onPressed: () async {
-                      if (nameController.text.isNotEmpty &&
-                          emailController.text.isNotEmpty &&
-                          passwordController.text.isNotEmpty) {
-                        final id = await dbHelper.signup(
-                          name: nameController.text,
-                          email: emailController.text,
-                          password: passwordController.text,
+                      final name = nameController.text.trim();
+                      final email = emailController.text.trim();
+                      final password = passwordController.text;
+
+                      if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                        showErrorDialog(
+                          'Missing Fields',
+                          'Please fill all fields.',
+                        );
+                        return;
+                      }
+
+                      if (!isEmailValid(email)) {
+                        showErrorDialog(
+                          'Invalid Email',
+                          'Please enter a valid email address.',
+                        );
+                        return;
+                      }
+
+                      if (!isPasswordValid(password)) {
+                        showErrorDialog(
+                          'Invalid Password',
+                          'Password must be at least 8 characters, contain a lowercase letter, and have no spaces.',
+                        );
+                        return;
+                      }
+
+                      final id = await dbHelper.signup(
+                        name: name,
+                        email: email,
+                        password: password,
+                      );
+
+                      if (id > 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text(
+                              'Account created successfully!',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            backgroundColor: Colors.green,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
                         );
 
-                        if (id > 0) {
-                          Navigator.pop(context);
-                        } else {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Error'),
-                              content: const Text(
-                                'Something went wrong, try again',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text("OK"),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                        await Future.delayed(const Duration(seconds: 2));
+                        Navigator.pop(context);
+                      } else {
+                        showErrorDialog(
+                          'Error',
+                          'Something went wrong, try again.',
+                        );
                       }
                     },
+
                     child: Text(
                       'Sign Up',
                       style: GoogleFonts.poppins(
                         fontSize: 18,
-                        color: Color(0xFF288a52),
+                        color: const Color(0xFF288a52),
                         fontWeight: FontWeight.w600,
                       ),
                     ),

@@ -1,7 +1,5 @@
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:simple_circular_progress_bar/simple_circular_progress_bar.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -25,7 +23,6 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       body: Center(
         child: Column(
-          //mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 23),
             CarouselSlider(
@@ -69,7 +66,6 @@ class _HomepageState extends State<Homepage> {
                   ),
                   SizedBox(height: 10),
                   Text("Your fitness journey starts here..."),
-                  // Add more content here
                 ],
               ),
             ),

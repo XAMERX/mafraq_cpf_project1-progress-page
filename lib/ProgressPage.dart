@@ -32,10 +32,8 @@ class _ProgresspageState extends State<Progresspage> {
   bool _isLoading = false;
 
   Random _random = Random();
-  DateTime? _walkingStartTime;
-  int _currentWalkingSession = 0;
-  double _walkingPace = 1.0;
   int _consecutiveSteps = 0;
+  double _walkingPace = 1.0;
 
   double _calories = 0;
   double _distance = 0;
@@ -43,10 +41,14 @@ class _ProgresspageState extends State<Progresspage> {
 
   List<Map<String, dynamic>> _weeklyData = [];
 
+  final DbHelper _dbHelper = DbHelper();
+
   @override
   void initState() {
     super.initState();
+    _resetIfNewDay();
     _checkPermissions();
+    _scheduleMidnightReset();
   }
 
   @override
@@ -110,8 +112,6 @@ class _ProgresspageState extends State<Progresspage> {
 
   void _startWalkingSession() {
     _isWalking = true;
-    _walkingStartTime = DateTime.now();
-    _currentWalkingSession++;
     _walkingPace = 0.85 + (_random.nextDouble() * 0.3);
     _consecutiveSteps = 0;
     _startStepCounting();
@@ -119,30 +119,27 @@ class _ProgresspageState extends State<Progresspage> {
 
   void _stopWalkingSession() {
     _isWalking = false;
-    _walkingStartTime = null;
     _stepTimer?.cancel();
     _sessionTimer?.cancel();
-    _stepTimer = null;
-    _sessionTimer = null;
   }
 
   void _startStepCounting() {
     _stepTimer?.cancel();
-    int baseInterval = (600 / _walkingPace).round();
+    int baseInterval = (550 / _walkingPace).round();
     _stepTimer = Timer.periodic(Duration(milliseconds: baseInterval), (timer) {
       if (!_isWalking) {
         timer.cancel();
         return;
       }
 
-      double stepChance = _calculateStepProbability();
+      double stepChance = 0.97 * (0.97 + _random.nextDouble() * 0.08);
       if (_random.nextDouble() < stepChance) {
         setState(() {
           _steps++;
           _consecutiveSteps++;
           _calculateMetrics();
         });
-        _saveSteps();
+        _saveStepsToDatabase();
       }
 
       if (_consecutiveSteps > 0 && _consecutiveSteps % 20 == 0) {
@@ -152,13 +149,6 @@ class _ProgresspageState extends State<Progresspage> {
     });
 
     _startSessionPatterns();
-  }
-
-  double _calculateStepProbability() {
-    double baseProbability = 0.92;
-    if (_consecutiveSteps < 5) baseProbability *= 0.8;
-    double randomVariation = 0.95 + (_random.nextDouble() * 0.1);
-    return (baseProbability * randomVariation).clamp(0.0, 1.0);
   }
 
   void _startSessionPatterns() {
@@ -186,56 +176,30 @@ class _ProgresspageState extends State<Progresspage> {
     _distance = (_steps * 0.762) / 1000;
   }
 
-  String _getDateKey() {
-    return "${widget.currentUser.id}_${DateFormat('yyyy-MM-dd').format(DateTime.now())}";
-  }
-
   Future<void> _loadTodaySteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = _getDateKey();
-    final lastDate = prefs.getString('lastDate_${widget.currentUser.id}') ?? '';
-
-    if (lastDate == today) {
-      setState(() {
-        _todaySteps = prefs.getInt('steps_$today') ?? 0;
-        _steps = _todaySteps;
-      });
-    } else {
-      setState(() {
-        _todaySteps = 0;
-        _steps = 0;
-      });
-      await prefs.setString('lastDate_${widget.currentUser.id}', today);
-      await prefs.setInt('steps_$today', 0);
-    }
-    _calculateMetrics();
+    final dbSteps = await _dbHelper.getSteps(widget.currentUser.id);
+    setState(() {
+      _steps = dbSteps;
+      _todaySteps = dbSteps;
+    });
   }
 
-  Future<void> _saveSteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = _getDateKey();
-    await prefs.setInt('steps_$today', _steps);
-    await prefs.setString('lastDate_${widget.currentUser.id}', today);
+  Future<void> _saveStepsToDatabase() async {
+    await _dbHelper.updateSteps(widget.currentUser.id, _steps);
   }
 
   Future<void> _loadDailyData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _dailyGoal = prefs.getInt('dailyGoal_${widget.currentUser.id}') ?? 1000;
-    });
-    _loadWeeklyData();
+    _dailyGoal = 1000;
+    await _loadWeeklyData();
   }
 
   Future<void> _loadWeeklyData() async {
-    final prefs = await SharedPreferences.getInstance();
     List<Map<String, dynamic>> weekData = [];
+    final now = DateTime.now();
 
     for (int i = 6; i >= 0; i--) {
-      final date = DateTime.now().subtract(Duration(days: i));
-      final dateStr =
-          "${widget.currentUser.id}_${DateFormat('yyyy-MM-dd').format(date)}";
-      final steps = prefs.getInt('steps_$dateStr') ?? 0;
-
+      final date = now.subtract(Duration(days: i));
+      final steps = await _dbHelper.getSteps(widget.currentUser.id);
       weekData.add({
         'date': date,
         'steps': steps,
@@ -248,44 +212,34 @@ class _ProgresspageState extends State<Progresspage> {
     });
   }
 
-  void _showGoalDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController(text: _dailyGoal.toString());
-        return AlertDialog(
-          title: Text("Set Daily Goal"),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: "Daily Steps Goal"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newGoal = int.tryParse(controller.text) ?? 1000;
-                setState(() {
-                  _dailyGoal = newGoal;
-                });
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setInt(
-                  'dailyGoal_${widget.currentUser.id}',
-                  newGoal,
-                );
-                Navigator.pop(context);
-              },
-              child: Text("Set Goal"),
-            ),
-          ],
-        );
-      },
-    );
+  void _scheduleMidnightReset() {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = tomorrow.difference(now);
+
+    Timer(durationUntilMidnight, () async {
+      setState(() {
+        _steps = 0;
+      });
+
+      await _saveStepsToDatabase();
+
+      _scheduleMidnightReset();
+    });
+  }
+
+  Future<void> _resetIfNewDay() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? lastResetDate = prefs.getString('lastResetDate');
+    String today = DateTime.now().toString().substring(0, 10);
+
+    if (lastResetDate != today) {
+      setState(() {
+        _steps = 0;
+      });
+      await _saveStepsToDatabase();
+      await prefs.setString('lastResetDate', today);
+    }
   }
 
   @override
@@ -345,16 +299,6 @@ class _ProgresspageState extends State<Progresspage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () async {
-                      await openAppSettings();
-                    },
-                    child: Text(
-                      "Open Settings",
-                      style: TextStyle(fontSize: 16, color: Color(0xFF288a52)),
-                    ),
-                  ),
                 ],
               ),
             )
@@ -362,6 +306,7 @@ class _ProgresspageState extends State<Progresspage> {
               padding: EdgeInsets.all(30),
               child: Column(
                 children: [
+                  SizedBox(height: 50),
                   Container(
                     padding: EdgeInsets.all(30),
                     decoration: BoxDecoration(
@@ -369,13 +314,6 @@ class _ProgresspageState extends State<Progresspage> {
                         colors: [Color(0xFF288a52), Colors.green[300]!],
                       ),
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: Offset(0, 0.5),
-                        ),
-                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -472,77 +410,6 @@ class _ProgresspageState extends State<Progresspage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 20),
-                  Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Weekly Activity",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[700],
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: _weeklyData.map((data) {
-                            final height = (data['steps'] / _dailyGoal * 100)
-                                .clamp(10.0, 100.0);
-
-                            final isToday =
-                                DateFormat('yyyy-MM-dd').format(data['date']) ==
-                                DateFormat('yyyy-MM-dd').format(DateTime.now());
-                            return Column(
-                              children: [
-                                Container(
-                                  width: 35,
-                                  height: height.toDouble(),
-                                  decoration: BoxDecoration(
-                                    gradient: isToday
-                                        ? LinearGradient(
-                                            colors: [
-                                              Colors.green[400]!,
-                                              Colors.green[600]!,
-                                            ],
-                                          )
-                                        : null,
-                                    color: !isToday ? Colors.grey[300] : null,
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                SizedBox(height: 5),
-                                Text(
-                                  data['day'],
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isToday
-                                        ? FontWeight.bold
-                                        : null,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -561,13 +428,6 @@ class _ProgresspageState extends State<Progresspage> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-          ),
-        ],
       ),
       child: Column(
         children: [

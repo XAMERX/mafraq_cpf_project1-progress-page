@@ -21,7 +21,7 @@ class DbHelper {
             password TEXT,
             steps INTEGER DEFAULT 0
           )
-          ''');
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -39,7 +39,6 @@ class DbHelper {
       "SELECT * FROM User WHERE email = ? AND password = ?",
       [email, password],
     );
-    await _database.close();
 
     if (users.isNotEmpty) {
       final u = users[0];
@@ -48,7 +47,7 @@ class DbHelper {
         name: u['name'],
         email: u['email'],
         password: u['password'],
-        steps: u['steps'],
+        steps: u['steps'] ?? 0,
       );
     } else {
       throw Exception('User not found');
@@ -65,7 +64,6 @@ class DbHelper {
       "INSERT INTO User (name, email, password, steps) VALUES (?, ?, ?, 0)",
       [name, email, password],
     );
-    await _database.close();
     return id;
   }
 
@@ -77,7 +75,6 @@ class DbHelper {
       where: 'id = ?',
       whereArgs: [userId],
     );
-    await _database.close();
   }
 
   Future<int> getSteps(int userId) async {
@@ -88,7 +85,33 @@ class DbHelper {
       where: 'id = ?',
       whereArgs: [userId],
     );
-    await _database.close();
     return result.isNotEmpty ? result[0]['steps'] : 0;
+  }
+
+  Future<User?> getUserByEmail(String email) async {
+    await openDataBaseFile();
+    List<Map> result = await _database.query(
+      'User',
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      final u = result[0];
+      return User(
+        id: u['id'],
+        name: u['name'],
+        email: u['email'],
+        password: u['password'],
+        steps: u['steps'] ?? 0,
+      );
+    } else {
+      return null;
+    }
+  }
+
+  Future<void> closeDatabase() async {
+    await _database.close();
   }
 }

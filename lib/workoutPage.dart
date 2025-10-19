@@ -149,13 +149,11 @@ class _ExercisesPageState extends State<ExercisesPage> {
 
           return Column(
             children: [
-              // Search and Filter Section
               Container(
                 padding: const EdgeInsets.all(16),
                 color: const Color(0xFF288a52),
                 child: Column(
                   children: [
-                    // Search Bar
                     TextField(
                       onChanged: (value) {
                         setState(() {
@@ -182,7 +180,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
                       ),
                     ),
                     const SizedBox(height: 25),
-                    // Filter Chips
                     Row(
                       children: [
                         Expanded(
@@ -276,7 +273,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
                   ],
                 ),
               ),
-              // Exercises List
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(8),
@@ -404,7 +400,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
         ),
         child: Column(
           children: [
-            // Handle bar
             Container(
               margin: const EdgeInsets.only(top: 8),
               width: 40,
@@ -414,7 +409,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Content
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),

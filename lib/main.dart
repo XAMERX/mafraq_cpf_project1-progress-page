@@ -14,13 +14,17 @@ void main() async {
 
   User? currentUser;
 
-  // إذا المستخدم مسجل دخول، نرجع بياناته من SharedPreferences
   if (isLoggedIn) {
     int userId = prefs.getInt('userId') ?? 0;
     String userName = prefs.getString('userName') ?? '';
     String userEmail = prefs.getString('userEmail') ?? '';
 
-    currentUser = User(id: userId, name: userName, email: userEmail, password: '');
+    currentUser = User(
+      id: userId,
+      name: userName,
+      email: userEmail,
+      password: '',
+    );
   }
 
   Widget startScreen;
@@ -43,9 +47,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: startScreen,
-    );
+    return MaterialApp(debugShowCheckedModeBanner: false, home: startScreen);
   }
 }

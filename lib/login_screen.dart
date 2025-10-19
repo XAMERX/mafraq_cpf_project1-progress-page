@@ -19,12 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool obscureText = true;
   DbHelper dbHelper = DbHelper();
 
-  // تسجيل الدخول وتخزين حالة المستخدم
   void loginUser(User user) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', true);
 
-    // تخزين معلومات المستخدم لاستخدامها عند فتح التطبيق لاحقًا
     await prefs.setInt('userId', user.id);
     await prefs.setString('userName', user.name);
     await prefs.setString('userEmail', user.email);
@@ -35,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // تسجيل خروج المستخدم
   void logoutUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
@@ -57,10 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/icon/iconLuncher.png',
-                  height: 120,
-                ),
+                Image.asset('assets/icon/iconLuncher.png', height: 120),
                 const SizedBox(height: 30),
                 Text(
                   "Welcome Back!",
@@ -150,9 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             password: passwordController.text,
                           );
 
-                          // استدعاء loginUser لتخزين الحالة والانتقال
                           loginUser(user);
-
                         } catch (e) {
                           showDialog(
                             context: context,

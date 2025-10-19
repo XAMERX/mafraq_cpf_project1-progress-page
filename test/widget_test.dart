@@ -8,7 +8,7 @@ void main() {
     // Build our app with a dummy startScreen to satisfy required parameter
     await tester.pumpWidget(
       MyApp(
-        startScreen: const Scaffold(), // صفحة فارغة لتجاوز الاختبار
+        startScreen: const Scaffold(),
       ),
     );
 

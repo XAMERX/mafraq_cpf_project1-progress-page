@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mafraq_cpf_project_v1/ProgressPage.dart';
 import 'package:mafraq_cpf_project_v1/homePage.dart';
+import 'package:mafraq_cpf_project_v1/profilepage.dart';
 import 'package:mafraq_cpf_project_v1/workoutPage.dart';
 import 'package:mafraq_cpf_project_v1/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'aboutAppPage.dart';
 import 'login_screen.dart';
 
 class NavView extends StatefulWidget {
@@ -47,7 +49,7 @@ class _NavViewState extends State<NavView> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF288a52),
-        automaticallyImplyLeading: true, // يخلي أيقونة الـ Drawer تظهر
+        automaticallyImplyLeading: true,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -56,7 +58,7 @@ class _NavViewState extends State<NavView> {
               "Peak Physique",
               style: GoogleFonts.oswald(fontSize: 26, color: Colors.white),
             ),
-            const SizedBox(width: 40), // ✨ فراغ يعوّض أيقونة الـ menu من اليسار
+            const SizedBox(width: 40),
           ],
         ),
       ),
@@ -75,23 +77,26 @@ class _NavViewState extends State<NavView> {
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ProfilePage(currentUser: widget.currentUser),
+                  ),
+                );
+              },
+            ),
 
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag),
-              title: const Text('My Goals'),
-              onTap: () {},
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {},
-            ),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('About App'),
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AboutPage()),
+                );
+              },
             ),
             const Divider(),
             ListTile(
